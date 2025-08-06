@@ -1,0 +1,60 @@
+esphome:
+  name: !secret device_name
+
+esp32:
+  board: esp32dev
+
+# Substitutions for cleaner code
+substitutions:
+  device_name_sub: !secret device_name
+
+logger:
+
+ota:
+  platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  ap:
+    ssid: !secret fallback_ssid
+    password: !secret fallback_password
+
+# Transmitter Configuration
+remote_transmitter:
+  pin: GPIO27
+  carrier_duty_percent: 50%
+
+# Api Configuration
+
+api: 
+  services:
+    - service: send_ir_pronto
+      variables:
+        data: string
+      then:
+        - remote_transmitter.transmit_pronto:
+            data: !lambda "return data.c_str();"
+
+
+remote_receiver:
+  pin:
+    number: GPIO14
+    inverted: true
+    mode:
+      input: true
+      pullup: true
+  dump: all
+  idle: 25ms
+  buffer_size: 2kb
+
+  on_pronto:
+    - homeassistant.event:
+        event: esphome.hassbeam.ir_received
+        data:
+          hassbeam_device: ${device_name_sub}
+          protocol: "Pronto"
+          data: !lambda "return x.data.c_str();"
+
+
